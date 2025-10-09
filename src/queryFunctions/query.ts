@@ -18,19 +18,21 @@ export const getAllConversionRates = async () => {
    const conversionRates = window.localStorage.getItem(
       'speedledev_conversionRates'
    )
-
+   console.log('Fetched conversion rates from localStorage:', conversionRates)
    let parsedConversionRates = conversionRates
       ? JSON.parse(conversionRates)
       : null
-   const lastUpdatedAt = new Date(parsedConversionRates.meta.last_updated_at)
-   const now = new Date()
-   const dateDiff = now.getDate() - lastUpdatedAt.getDate()
-   if (dateDiff > 1) {
-      console.log('Conversion rates are stale')
-      window.localStorage.removeItem('speedledev_conversionRates')
-      parsedConversionRates = null
-   }
 
+   if (parsedConversionRates) {
+      const lastUpdatedAt = new Date(parsedConversionRates.meta.last_updated_at)
+      const now = new Date()
+      const dateDiff = now.getDate() - lastUpdatedAt.getDate()
+      if (dateDiff > 1) {
+         console.log('Conversion rates are stale')
+         window.localStorage.removeItem('speedledev_conversionRates')
+         parsedConversionRates = null
+      }
+   }
    if (parsedConversionRates) return parsedConversionRates
    try {
       const response = await ccApi.get('/v3/latest')
