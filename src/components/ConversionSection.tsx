@@ -127,7 +127,13 @@ const ConversionSection = ({ data, setList, list }: Props) => {
       <section>
          {' '}
          <Table className='overflow-hidden'>
-            <TableCaption>A list of your selected currencies.</TableCaption>
+            <TableCaption>
+               A list of your selected currencies. Conversion rates last updated: {
+                  data?.meta?.last_updated_at
+                     ? new Date(data.meta.last_updated_at).toLocaleDateString("en-US")
+                     : "N/A"
+               }
+            </TableCaption>
             <TableHeader>
                <TableRow>
                   <TableHead className='w-[50px]'>Code</TableHead>

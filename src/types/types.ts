@@ -38,7 +38,7 @@ export type ConversionRatesData = {
 
 export type ConversionRatesDataMeta = {
    meta: {
-      last_updated: string
+      last_updated_at: string
    },
    data: ConversionRatesPerNation
 }
