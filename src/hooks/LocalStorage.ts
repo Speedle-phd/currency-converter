@@ -5,17 +5,18 @@ function useLocalStorage<T>(key: string, initialValue: T) {
       try {
          const item = window.localStorage.getItem(key);
          return item ? JSON.parse(item) : initialValue;
-      } catch {
+      } catch (error) {
+         console.warn(`Could not read ${key} from localStorage:`, error)
          return initialValue;
       }
    });
 
    const setValue = (value: T) => {
+      setStoredValue(value);
       try {
-         setStoredValue(value);
          window.localStorage.setItem(key, JSON.stringify(value));
-      } catch {
-         // Handle error if needed
+      } catch (error) {
+         console.warn(`Could not save ${key} to localStorage:`, error)
       }
    };
 

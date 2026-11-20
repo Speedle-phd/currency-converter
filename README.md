@@ -5,10 +5,19 @@
 ### Production setup
 
 Install Docker Engine with the Compose plugin, then create the local environment
-file and start the production service:
+file:
 
 ```sh
 cp .env.example .env
+```
+
+Set `VITE_CC_APIKEY` in `.env` to a [currencyapi.com](https://currencyapi.com/)
+API key before building. Vite embeds this key in the browser bundle, so it is
+publicly visible: use a restricted key and do not treat it as a secret. The key
+is a build-time setting; rebuild the image after changing it. Then start the
+production service:
+
+```sh
 docker compose up -d --build
 ```
 
@@ -47,8 +56,25 @@ Run the Vite development server instead:
 docker compose --profile dev up --build dev
 ```
 
-The development server is available at `http://localhost:5173` by default. Set
-`DEV_PORT` to change the host port.
+The development server is available at `http://localhost:5173` by default.
+The example `.env` sets `DEV_PORT=5175`; change it if desired, and set
+`VITE_CC_APIKEY` there too.
+
+Stop the attached development container with `Ctrl+C`. If you started it in the
+background with `-d`, stop it with:
+
+```sh
+docker compose --profile dev stop dev
+```
+
+### Currency data and caching
+
+The browser caches currency metadata and exchange rates separately for 24 hours
+after a successful fetch. While the app is open, it refreshes expired data; a
+closed browser does not fetch in the background. Cached data remains available
+when a refresh fails or the browser is offline, with its status shown in the
+app. Each browser maintains its own cache and API usage.
+Multiple open tabs can make duplicate requests when their caches expire together.
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

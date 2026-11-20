@@ -10,6 +10,7 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173", "--strict
 
 FROM dependencies AS build
 COPY . .
+ARG VITE_CC_APIKEY
 RUN npm run build
 
 FROM nginx:alpine AS production

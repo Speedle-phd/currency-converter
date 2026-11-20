@@ -1,197 +1,89 @@
-import type { ConversionRatesDataMeta, CurrencyWithValue } from '@/types/types'
-import {
-   Table,
-   TableBody,
-   TableCaption,
-   TableCell,
-   TableHead,
-   TableHeader,
-   TableRow,
-} from './ui/table'
+import { Trash2 } from 'lucide-react'
+import { Button } from './ui/button'
 import { Input } from './ui/input'
-import { createRef, useEffect, useRef, useState } from 'react'
-
-
-const SWIPE_THRESHOLD = 80 // threshold in pixels to trigger delete
-const DELETE_WIDTH = 90 // width of delete area in pixels
+import useLocalStorage from '@/hooks/LocalStorage'
+import { convertAmount } from '@/lib/currency-cache'
+import type { ConversionRatesDataMeta, CurrencyWithValue } from '@/types/types'
 
 type Props = {
-   data: ConversionRatesDataMeta | null | undefined
-   setList: (currency: CurrencyWithValue[]) => void
-   list: CurrencyWithValue[] | null
+   data: ConversionRatesDataMeta | undefined
+   list: CurrencyWithValue[]
+   onRemove: (code: string) => void
 }
-const ConversionSection = ({ data, setList, list }: Props) => {
-   const [inputRefs, setInputRefs] = useState<
-      React.RefObject<HTMLInputElement | null>[]
-   >([])
 
-      const [dragX, setDragX] = useState<number[]>([])
-      const [isDragging, setIsDragging] = useState<boolean[]>([])
-      const startXRef = useRef<number>(0)
-      const activeIndexRef = useRef<number | null>(null)
-
-   const handleChange = (currency: CurrencyWithValue, index: number) => {
-
-      const value = inputRefs[index].current?.value
-      const targetCode = currency.code
-      const { data: conversionData } = data!
-      console.log(value, targetCode)
-      if (value) {
-         const updatedList = list?.map((c) => {
-            if (c.code === targetCode) {
-               // Update the value for the currency being edited
-               return { ...c, value: value ? parseFloat(value) : 0 }
-            } else {
-               // Convert the entered value to USD first, then to the target currency
-               const usdValue =
-                  targetCode === 'USD'
-                     ? value
-                        ? parseFloat(value)
-                        : 0
-                     : value
-                     ? parseFloat(value) / conversionData[targetCode].value
-                     : 0
-               const newValue =
-                  c.code === 'USD'
-                     ? usdValue
-                     : usdValue * conversionData[c.code].value
-               return { ...c, value: Number(newValue.toFixed(2)) }
-            }
-         })
-         inputRefs.forEach((ref, idx) => {
-            ref.current?.classList.remove('reference')
-            if (idx === index) return
-            if (ref.current) {
-               ref.current.value = updatedList?.[idx]?.value.toString() || ''
-            }
-         })
-         inputRefs[index].current?.classList.add('reference')
-         setList(updatedList!)
-      }
-   }
-   useEffect(() => {
-      setInputRefs(() => list?.map(() => createRef<HTMLInputElement>()) || [])
-            setDragX(() => list?.map(() => 0) || [])
-            setIsDragging(() => list?.map(() => false) || [])
-   }, [list])
-
-
-      const handleStart = (
-         e: React.MouseEvent | React.TouchEvent,
-         index: number
-      ) => {
-         activeIndexRef.current = index
-         setIsDragging((prev) => prev.map((v, i) => (i === index ? true : v)))
-
-         const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-         startXRef.current = clientX
-      }
-
-      const handleMove = (e: React.MouseEvent | React.TouchEvent) => {
-         const index = activeIndexRef.current
-         if (index === null) return
-         if (!isDragging[index]) return
-
-         const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-         const deltaX = clientX - startXRef.current
-
-         // Only allow dragging left
-         if (deltaX < 0) {
-            setDragX((prev) =>
-               prev.map((val, i) =>
-                  i === index ? Math.max(deltaX, -DELETE_WIDTH * 1.5) : val
-               )
-            )
-         }
-      }
-
-      const handleEnd = () => {
-         const index = activeIndexRef.current
-         if (index === null) return
-
-         const finalOffset = dragX[index]
-
-         if (Math.abs(finalOffset) > SWIPE_THRESHOLD) {
-            if (list) {
-               setList(list.filter((_: CurrencyWithValue, i: number) => i !== index))
-            }
-         } else {
-            setDragX((prev) => prev.map((val, i) => (i === index ? 0 : val)))
-         }
-
-         setIsDragging((prev) => prev.map((v, i) => (i === index ? false : v)))
-         activeIndexRef.current = null
-      }
+const ConversionSection = ({ data, list, onRemove }: Props) => {
+   const [reference, setReference] = useLocalStorage<{ code: string, amount: string } | null>(
+      'speedledev_reference',
+      null
+   )
+   const active = reference && list.some((currency) => currency.code === reference.code)
+      ? reference
+      : list.length ? { code: list[0].code, amount: String(list[0].value || 0) } : null
 
    return (
-      <section>
-         {' '}
-         <Table className='overflow-hidden'>
-            <TableCaption>
-               A list of your selected currencies. Conversion rates last updated: {
-                  data?.meta?.last_updated_at
-                     ? new Date(data.meta.last_updated_at).toLocaleDateString("en-US")
-                     : "N/A"
-               }
-            </TableCaption>
-            <TableHeader>
-               <TableRow>
-                  <TableHead className='w-[50px]'>Code</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Symbol</TableHead>
-                  <TableHead className='text-right'>Value</TableHead>
-               </TableRow>
-            </TableHeader>
-            <TableBody>
-               {list &&
-                  list.length > 0 &&
-                  list?.map((currency, index) => (
-                     <TableRow
-                        key={index}
-                        className='reference-row relative'
-                        onMouseDown={(e) => handleStart(e, index)}
-                        onMouseMove={handleMove}
-                        onMouseUp={handleEnd}
-                        // onMouseLeave={handleEnd}
-                        onTouchStart={(e) => handleStart(e, index)}
-                        onTouchMove={handleMove}
-                        onTouchEnd={handleEnd}
-                        
-                        style={{
-                           transform: `translateX(${dragX[index]}px)`,
-                           transition: isDragging[index]
-                              ? 'none'
-                              : 'transform 0.2s ease',
-                        }}
-                     >
-                        <TableCell className='font-medium'>
-                           {currency.code}
-                        </TableCell>
-                        <TableCell>{currency.name}</TableCell>
-                        <TableCell>{currency.symbol_native}</TableCell>
-                        <TableCell className='text-right'>
+      <section aria-labelledby='selected-heading' className='space-y-3'>
+         <div>
+            <h2 id='selected-heading' className='text-lg font-semibold'>Your currencies</h2>
+            <p className='text-muted-foreground text-sm'>Edit any amount to convert the others.</p>
+         </div>
+         {list.length === 0 ? (
+            <div className='text-muted-foreground rounded-lg border border-dashed p-8 text-center text-sm'>
+               Search above to add currencies and start converting.
+            </div>
+         ) : (
+            <div className='space-y-2'>
+               {list.map((currency) => {
+                  const isReference = active?.code === currency.code
+                  const sourceRate = active ? data?.data[active.code]?.value : undefined
+                  const targetRate = data?.data[currency.code]?.value
+                  const result = active && active.amount !== '' && sourceRate && targetRate
+                     ? convertAmount(Number(active.amount), sourceRate, targetRate)
+                     : null
+                  const display = isReference ? active?.amount ?? '' : result === null ? '' : String(Number(result.toFixed(2)))
+                  return (
+                     <div key={currency.code} className='bg-card flex flex-wrap items-center gap-3 rounded-lg border p-3 sm:flex-nowrap'>
+                        <div className='min-w-0 flex-1'>
+                           <p className='font-semibold'>{currency.code} <span className='text-muted-foreground font-normal'>{currency.symbol_native}</span></p>
+                           <p className='text-muted-foreground truncate text-xs'>{currency.name}</p>
+                        </div>
+                        <div className='w-36 sm:w-40'>
                            <Input
-                              data-code={currency.code}
-                              ref={inputRefs[index]}
+                              aria-label={`Amount in ${currency.code}`}
                               type='number'
-                              onChange={() => handleChange(currency, index)}
-                              pattern='^\d*\.?\d*$'
-                              step='0.01'
-                              min={0}
+                              inputMode='decimal'
+                              min='0'
+                              step='any'
+                              value={display}
+                              disabled={!data || !targetRate}
+                              onChange={(event) => {
+                                 const amount = event.target.value
+                                 if (amount === '' || (Number.isFinite(Number(amount)) && Number(amount) >= 0)) {
+                                    setReference({ code: currency.code, amount })
+                                 }
+                              }}
                            />
-                        </TableCell>
-
-                        {/* Red delete area */}
-                        <TableCell
-                           className='absolute top-0 -right-[121px] h-full w-[120px] bg-red-500 text-white flex items-center justify-center pointer-events-none'
-                           style={{ zIndex: 0 }}
-                        >
-                           Delete
-                        </TableCell>
-                     </TableRow>
-                  ))}
-            </TableBody>
-         </Table>
+                           {data && !targetRate && <span className='text-destructive text-xs'>Rate unavailable</span>}
+                        </div>
+                        <Button variant='ghost' size='icon' onClick={() => {
+                           if (isReference) {
+                              const next = list.find((item) => item.code !== currency.code)
+                              const nextRate = next && data?.data[next.code]?.value
+                              const nextAmount = active && active.amount !== '' && sourceRate && nextRate
+                                 ? convertAmount(Number(active.amount), sourceRate, nextRate)
+                                 : null
+                              setReference(next && nextAmount !== null
+                                 ? { code: next.code, amount: String(Number(nextAmount.toFixed(2))) }
+                                 : null)
+                           }
+                           onRemove(currency.code)
+                        }} aria-label={`Remove ${currency.code}`}>
+                           <Trash2 aria-hidden='true' />
+                        </Button>
+                     </div>
+                  )
+               })}
+            </div>
+         )}
       </section>
    )
 }

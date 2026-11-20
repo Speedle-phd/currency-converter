@@ -1,86 +1,73 @@
 import type { Currency, CurrencyData, CurrencyWithValue } from '@/types/types'
+import { useMemo, useState } from 'react'
+import { Search } from 'lucide-react'
 import { Input } from './ui/input'
-import { useRef, useState } from 'react'
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from './ui/table'
 
 type Props = {
-   data: CurrencyData | null | undefined
-   setList: (currency: CurrencyWithValue[]) => void
-   list: CurrencyWithValue[] | null
+   data: CurrencyData | undefined
+   list: CurrencyWithValue[]
+   onAdd: (currency: Currency) => void
+   loading: boolean
 }
-const QuerySection = ({ data, setList, list }: Props) => {
-   const inputRef = useRef<HTMLInputElement>(null)
-   const currencyData = data?.data
-   const currencyArray = currencyData ? Object.values(currencyData) : []
-   const [currencies, setCurrencies] = useState<Currency[]>([])
 
-   const handleInputChange = () => {
-      const query = inputRef.current?.value.toLowerCase() || ''
-      if (query === '') {
-         setCurrencies([])
-      } else {
-         const filteredCurrencies = currencyArray.filter(
-            (currency) =>
-               currency.name.toLowerCase().includes(query) ||
-               currency.code.toLowerCase().includes(query) ||
-               currency.countries.some((country) =>
-                  country.toLowerCase().includes(query)
-               )
+const QuerySection = ({ data, list, onAdd, loading }: Props) => {
+   const [query, setQuery] = useState('')
+   const matches = useMemo(() => {
+      const term = query.trim().toLowerCase()
+      if (!term || !data) return []
+      return Object.values(data.data)
+         .filter((currency) =>
+            currency.name.toLowerCase().includes(term) ||
+            currency.code.toLowerCase().includes(term) ||
+            currency.countries.some((country) => country.toLowerCase().includes(term))
          )
-         setCurrencies(filteredCurrencies)
-      }
-   }
-
-   const handleClick = (currency: Currency) => {
-      if (list?.some((c) => c.code === currency.code)) {
-         // Currency is already in the list
-         console.log('Currency already selected:', currency)
-      } else {
-         // Handle currency click
-         console.log('Currency clicked:', currency)
-         inputRef.current!.value = ""
-         setCurrencies([])
-         setList([...list!, { ...currency, value: 0 }])
-      }
-   }
+         .slice(0, 20)
+   }, [data, query])
 
    return (
       <section className='relative'>
-         <Input
-            ref={inputRef}
-            placeholder='Enter your query'
-            onChange={handleInputChange}
-         />
-         {currencies.length > 0 && (
-            <aside className='absolute z-[100] w-full max-h-[20rem] overflow-y-auto '>
-               <Table className='bg-accent rounded-lg shadow-sm shadow-primary'>
-                  <TableCaption>A list of currencies</TableCaption>
-                  <TableHeader>
-                     <TableRow className=''>
-                        <TableHead className='w-[100px]'>Code</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Symbol</TableHead>
-                        <TableHead className='text-right'>
-                           Symbol Native
-                        </TableHead>
-                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                     {currencies?.map((currency, index) => (
-                        <TableRow onClick={() => handleClick(currency)} key={index} className='hover:opacity-50 transition-colors cursor-pointer'>
-                           <TableCell className='font-medium'>
-                              {currency.code}
-                           </TableCell>
-                           <TableCell>{currency.name}</TableCell>
-                           <TableCell>{currency.symbol}</TableCell>
-                           <TableCell className='text-right'>
-                              {currency.symbol_native}
-                           </TableCell>
-                        </TableRow>
-                     ))}
-                  </TableBody>
-               </Table>
-            </aside>
+         <label htmlFor='currency-search' className='mb-2 block text-sm font-medium'>
+            Add a currency
+         </label>
+         <div className='relative'>
+            <Search aria-hidden='true' className='text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2' />
+            <Input
+               id='currency-search'
+               className='h-11 pl-10'
+               value={query}
+               onChange={(event) => setQuery(event.target.value)}
+               placeholder='Search by currency, code or country code'
+               autoComplete='off'
+               disabled={!data}
+               aria-describedby='search-hint'
+            />
+         </div>
+         <p id='search-hint' className='text-muted-foreground mt-2 text-xs'>
+            {loading && !data ? 'Loading currencies...' : !data ? 'Currency search is unavailable.' : 'Search and select a currency to add it.'}
+         </p>
+         {query.trim() && data && (
+            <div className='bg-popover absolute z-10 mt-2 max-h-72 w-full overflow-y-auto rounded-lg border p-1 shadow-lg'>
+               {matches.length === 0 ? (
+                  <p className='text-muted-foreground p-3 text-sm'>No currencies found.</p>
+               ) : matches.map((currency) => {
+                  const selected = list.some((item) => item.code === currency.code)
+                  return (
+                     <button
+                        key={currency.code}
+                        type='button'
+                        disabled={selected}
+                        onClick={() => {
+                           onAdd(currency)
+                           setQuery('')
+                        }}
+                        className='hover:bg-accent focus-visible:bg-accent flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm outline-none disabled:opacity-50'
+                     >
+                        <span><strong>{currency.code}</strong> <span className='text-muted-foreground'>{currency.name}</span></span>
+                        <span>{selected ? 'Added' : currency.symbol_native}</span>
+                     </button>
+                  )
+               })}
+            </div>
          )}
       </section>
    )
