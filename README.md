@@ -1,5 +1,55 @@
 # React + TypeScript + Vite
 
+## Docker
+
+### Production setup
+
+Install Docker Engine with the Compose plugin, then create the local environment
+file and start the production service:
+
+```sh
+cp .env.example .env
+docker compose up -d --build
+```
+
+Edit `.env` to set `PORT` before starting if needed. The service is available at
+`http://localhost:8080` by default. Compose binds it to `127.0.0.1`, so it is
+only reachable from the host; for public access, put it behind a reverse proxy
+that provides HTTPS.
+
+Check the service and view its logs with:
+
+```sh
+docker compose ps
+docker compose logs -f app
+```
+
+### Updating the production app
+
+After pulling the latest source changes, rebuild and recreate the service:
+
+```sh
+git pull
+docker compose up -d --build
+```
+
+To stop the production service without removing its image:
+
+```sh
+docker compose down
+```
+
+### Development
+
+Run the Vite development server instead:
+
+```sh
+docker compose --profile dev up --build dev
+```
+
+The development server is available at `http://localhost:5173` by default. Set
+`DEV_PORT` to change the host port.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
